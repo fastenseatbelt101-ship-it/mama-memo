@@ -2,12 +2,10 @@
 // 返回今天和明天的任务清单
 // { today: [...], tomorrow: [...] }
 
-import { listTodayAndTomorrow } from "./_lib/db.js";
+import { listTodayAndTomorrow } from "../_lib/db.js";
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method !== "GET") return res.status(405).json({ error: "只支持 GET" });
-
+export async function onRequestGet(context) {
+  const { env } = context;
   try {
     // 用北京时间计算今日/明日
     const now = new Date();
@@ -17,15 +15,15 @@ export default async function handler(req, res) {
     tom.setUTCDate(tom.getUTCDate() + 1);
     const tomorrowStr = ymd(tom);
 
-    const { today, tomorrow } = await listTodayAndTomorrow(todayStr, tomorrowStr);
+    const { today, tomorrow } = await listTodayAndTomorrow(todayStr, tomorrowStr, env);
 
-    return res.status(200).json({
+    return jsonResponse({
       today: today.map(toClient),
       tomorrow: tomorrow.map(toClient)
     });
   } catch (err) {
     console.error("list 出错:", err);
-    return res.status(500).json({ error: err.message || "服务器内部错误" });
+    return jsonResponse({ error: err.message || "服务器内部错误" }, 500);
   }
 }
 
@@ -46,4 +44,14 @@ function toClient(r) {
     created_at: r.created_at,
     done: r.done
   };
+}
+
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*"
+    }
+  });
 }

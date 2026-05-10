@@ -2,16 +2,17 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="备忘录">
   <meta name="theme-color" content="#FFF8F3">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <title>妈妈的备忘录</title>
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+    textarea, input { -webkit-user-select: text; user-select: text; }
     html, body {
       margin: 0; padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
@@ -23,20 +24,26 @@
       overflow-x: hidden;
     }
     body {
-      padding:
-        max(env(safe-area-inset-top), 16px)
-        max(env(safe-area-inset-right), 20px)
-        max(env(safe-area-inset-bottom), 24px)
-        max(env(safe-area-inset-left), 20px);
       max-width: 600px;
       margin: 0 auto;
       min-height: 100vh;
+      padding-bottom: 0;
     }
+
+    /* 顶部内容区（可滚动）—— 给底部 input 预留空间 */
+    .scroll-area {
+      padding:
+        max(env(safe-area-inset-top), 16px)
+        max(env(safe-area-inset-right), 20px)
+        220px
+        max(env(safe-area-inset-left), 20px);
+    }
+
     header {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      padding: 8px 0 20px;
+      padding: 8px 0 18px;
     }
     h1 {
       margin: 0;
@@ -49,68 +56,44 @@
       color: #9B8B7A;
     }
 
-    /* 输入区域 */
-    .input-card {
-      background: #fff;
-      border-radius: 18px;
-      padding: 16px;
-      box-shadow: 0 2px 16px rgba(80, 50, 20, 0.06);
-      margin-bottom: 28px;
-    }
-    textarea#memo {
-      width: 100%;
-      min-height: 120px;
-      border: none;
-      outline: none;
-      resize: none;
-      background: transparent;
-      font-family: inherit;
-      font-size: 19px;
-      line-height: 1.6;
-      color: #2C2419;
-      padding: 4px;
-    }
-    textarea#memo::placeholder {
-      color: #C9B8A1;
-    }
-    .input-actions {
-      display: flex;
+    /* 通知开关条 */
+    .notif-banner {
+      background: #FFF1E6;
+      border: 1px solid #F2DCC4;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      display: none;
       align-items: center;
-      justify-content: space-between;
-      margin-top: 10px;
+      gap: 10px;
+      font-size: 14px;
+      color: #6B4F33;
     }
-    .voice-hint {
-      font-size: 13px;
-      color: #B5A28A;
-      display: flex;
-      align-items: center;
-      gap: 4px;
+    .notif-banner.show { display: flex; }
+    .notif-banner span { flex: 1; }
+    .notif-banner button {
+      background: #D97757; color: #fff; border: none;
+      padding: 6px 12px; border-radius: 999px;
+      font-size: 13px; font-weight: 500; font-family: inherit;
     }
-    button#save {
-      background: #D97757;
-      color: #fff;
-      border: none;
-      padding: 12px 28px;
-      border-radius: 999px;
-      font-size: 17px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: transform 0.1s ease, background 0.2s ease;
-      min-height: 44px;
+    .notif-banner .skip {
+      background: transparent; color: #9B8B7A;
+      border: 1px solid #E8D9C4;
     }
-    button#save:active { transform: scale(0.96); background: #C4664A; }
-    button#save:disabled { background: #E8C4B5; cursor: not-allowed; }
 
     /* 区块 */
-    section.list-section {
-      margin-bottom: 28px;
-    }
+    section.list-section { margin-bottom: 22px; }
     .section-title {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       margin: 0 4px 12px;
+      cursor: default;
+    }
+    .section-title.collapsible {
+      cursor: pointer;
+      padding: 8px 4px;
+      margin: 0 0 4px;
     }
     .section-title h2 {
       margin: 0;
@@ -118,16 +101,35 @@
       font-weight: 600;
       color: #5C4733;
     }
+    .section-title .right {
+      display: flex; align-items: center; gap: 6px;
+    }
     .section-title .count {
       font-size: 13px;
       color: #B5A28A;
     }
+    .section-title .chevron {
+      width: 18px; height: 18px;
+      color: #9B8B7A;
+      transition: transform 0.25s ease;
+    }
+    .section-title.collapsible.expanded .chevron {
+      transform: rotate(90deg);
+    }
 
-    /* 任务卡片 */
     .task-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .task-list.collapsed {
+      max-height: 0;
+      gap: 0;
+    }
+    .task-list.expanded {
+      max-height: 2000px;
     }
     .task-item {
       background: #fff;
@@ -137,7 +139,6 @@
       display: flex;
       align-items: flex-start;
       gap: 12px;
-      transition: opacity 0.2s ease;
     }
     .task-time {
       flex-shrink: 0;
@@ -159,15 +160,7 @@
       color: #2C2419;
       word-break: break-word;
     }
-    .task-original {
-      font-size: 13px;
-      color: #9B8B7A;
-      margin-top: 4px;
-    }
-    .task-item.done .task-content { text-decoration: line-through; color: #B5A28A; }
-    .task-item.done { opacity: 0.6; }
 
-    /* 空状态 */
     .empty {
       background: rgba(255, 255, 255, 0.5);
       border: 1.5px dashed #E8D9C4;
@@ -178,11 +171,109 @@
       color: #B5A28A;
     }
 
+    /* 底部输入卡片：sticky */
+    .input-dock {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, rgba(255, 248, 243, 0) 0%, #FFF8F3 25%, #FFF8F3 100%);
+      padding:
+        24px
+        max(env(safe-area-inset-right), 20px)
+        max(env(safe-area-inset-bottom), 16px)
+        max(env(safe-area-inset-left), 20px);
+      z-index: 50;
+      pointer-events: none;
+    }
+    .input-dock-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      pointer-events: auto;
+    }
+    .input-card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 6px 24px rgba(80, 50, 20, 0.08);
+    }
+    textarea#memo {
+      width: 100%;
+      min-height: 56px;
+      max-height: 140px;
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 17px;
+      line-height: 1.5;
+      color: #2C2419;
+      padding: 4px;
+    }
+    textarea#memo::placeholder {
+      color: #C9B8A1;
+    }
+
+    .input-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    button#voice {
+      flex: 1;
+      background: #5C4733;
+      color: #fff;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 999px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      min-height: 50px;
+      transition: background 0.2s ease, transform 0.05s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      touch-action: none;
+    }
+    button#voice:active,
+    button#voice.recording {
+      background: #C44545;
+      transform: scale(0.99);
+    }
+    button#voice.recording {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    button#voice .mic {
+      width: 18px; height: 18px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(196, 69, 69, 0.6); }
+      50%      { box-shadow: 0 0 0 12px rgba(196, 69, 69, 0); }
+    }
+
+    button#save {
+      background: #D97757;
+      color: #fff;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 999px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      min-height: 50px;
+    }
+    button#save:active { background: #C4664A; transform: scale(0.96); }
+    button#save:disabled { background: #E8C4B5; }
+
     /* Toast */
     .toast {
       position: fixed;
       left: 50%;
-      bottom: 80px;
+      bottom: 240px;
       transform: translateX(-50%) translateY(20px);
       background: rgba(44, 36, 25, 0.92);
       color: #fff;
@@ -201,6 +292,42 @@
     }
     .toast.error { background: rgba(180, 60, 40, 0.95); }
 
+    /* 录音中浮层 */
+    .recording-hint {
+      position: fixed;
+      left: 0; right: 0; bottom: 240px;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 999;
+    }
+    .recording-hint.show { opacity: 1; }
+    .recording-hint .dot {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #C44545;
+      animation: blink 1s ease-in-out infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .recording-hint .label {
+      display: inline-block;
+      vertical-align: middle;
+      font-size: 17px;
+      color: #5C4733;
+      background: rgba(255, 255, 255, 0.96);
+      padding: 10px 18px;
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(80, 50, 20, 0.15);
+      max-width: 80%;
+    }
+
     /* loading 旋转 */
     .spinner {
       width: 16px; height: 16px;
@@ -216,71 +343,83 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>妈妈的备忘录</h1>
-    <span class="date-hint" id="todayLabel"></span>
-  </header>
+  <div class="scroll-area">
+    <header>
+      <h1>妈妈的备忘录</h1>
+      <span class="date-hint" id="todayLabel"></span>
+    </header>
 
-  <div class="input-card">
-    <textarea id="memo" placeholder="想到什么就写什么…&#10;比如：明天上午十点去医院、周五之前给王老师回电话"></textarea>
-    <div class="input-actions">
-      <span class="voice-hint">键盘上点🎤可以直接说话</span>
-      <button id="save">记下</button>
+    <!-- 通知开关条（仅 PWA 模式下、未授权时显示）-->
+    <div class="notif-banner" id="notifBanner">
+      <span>到时间帮你弹个提醒？</span>
+      <button id="notifEnable">好的</button>
+      <button class="skip" id="notifSkip">以后再说</button>
+    </div>
+
+    <!-- 今日要做（永远展开）-->
+    <section class="list-section">
+      <div class="section-title">
+        <h2>今日要做</h2>
+        <div class="right">
+          <span class="count" id="todayCount"></span>
+        </div>
+      </div>
+      <div class="task-list expanded" id="todayList"></div>
+    </section>
+
+    <!-- 明日预告（默认收起，可点击展开）-->
+    <section class="list-section">
+      <div class="section-title collapsible" id="tomorrowHeader">
+        <h2>明日预告</h2>
+        <div class="right">
+          <span class="count" id="tomorrowCount"></span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 6 15 12 9 18"/>
+          </svg>
+        </div>
+      </div>
+      <div class="task-list collapsed" id="tomorrowList"></div>
+    </section>
+  </div>
+
+  <!-- 输入区，sticky 在底部 -->
+  <div class="input-dock">
+    <div class="input-dock-inner">
+      <div class="input-card">
+        <textarea id="memo" placeholder="按住下面棕色按钮直接说话，或者打字"></textarea>
+        <div class="input-actions">
+          <button id="voice">
+            <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+            </svg>
+            <span id="voiceLabel">按住说话</span>
+          </button>
+          <button id="save">记下</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <section class="list-section">
-    <div class="section-title">
-      <h2>今日要做</h2>
-      <span class="count" id="todayCount"></span>
-    </div>
-    <div class="task-list" id="todayList"></div>
-  </section>
-
-  <section class="list-section">
-    <div class="section-title">
-      <h2>明日预告</h2>
-      <span class="count" id="tomorrowCount"></span>
-    </div>
-    <div class="task-list" id="tomorrowList"></div>
-  </section>
-
   <div class="toast" id="toast"></div>
+  <div class="recording-hint" id="recordingHint">
+    <span class="label"><span class="dot"></span><span id="recHintText">在听了…</span></span>
+  </div>
 
   <script>
-    // ============ 状态管理 ============
+    // ============ 状态 ============
     const STORAGE_KEY = "mama_memo_tasks_v1";
+    const NOTIF_DECISION_KEY = "mama_memo_notif_decided";
+    const TOMORROW_OPEN_KEY = "mama_memo_tomorrow_open";
     let tasks = loadTasks();
-    let backendOK = false; // 后端可用时为 true，会在启动时探测
+    let scheduledNotifTimers = [];
 
     function loadTasks() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      } catch { return []; }
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+      catch { return []; }
     }
-    function saveTasks() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    }
-
-    // 启动时从后端拉一次今日 + 明日的数据
-    async function syncFromBackend() {
-      try {
-        const resp = await fetch("/api/list");
-        if (!resp.ok) return;
-        const data = await resp.json();
-        backendOK = true;
-        const remote = [...(data.today || []), ...(data.tomorrow || [])];
-        // 把后端的数据合并进本地：以 id 去重，后端的覆盖本地的
-        const map = new Map();
-        for (const t of tasks) map.set(t.id, t);
-        for (const t of remote) map.set(t.id, t);
-        tasks = Array.from(map.values());
-        saveTasks();
-        render();
-      } catch (e) {
-        console.warn("拉取后端数据失败，仅显示本地缓存", e);
-      }
-    }
+    function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
 
     // ============ 日期工具 ============
     function ymd(d) {
@@ -300,9 +439,26 @@
       return `${d.getMonth()+1}月${d.getDate()}日 周${wd}`;
     }
 
-    // ============ 后端调用（带 LocalStorage 兜底） ============
+    // ============ 后端 ============
+    async function syncFromBackend() {
+      try {
+        const resp = await fetch("/api/list");
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const remote = [...(data.today || []), ...(data.tomorrow || [])];
+        const map = new Map();
+        for (const t of tasks) map.set(t.id, t);
+        for (const t of remote) map.set(t.id, t);
+        tasks = Array.from(map.values());
+        saveTasks();
+        render();
+        scheduleLocalNotifications();
+      } catch (e) {
+        console.warn("拉取失败", e);
+      }
+    }
+
     async function parseAndSave(text) {
-      // 优先调后端 AI 解析
       try {
         const resp = await fetch("/api/save", {
           method: "POST",
@@ -312,36 +468,26 @@
         if (resp.ok) {
           const data = await resp.json();
           if (data.tasks && Array.isArray(data.tasks)) {
-            // 后端已经存了，前端也存一份本地缓存
             tasks.push(...data.tasks);
             saveTasks();
             return data.tasks;
           }
         }
-      } catch (e) {
-        console.warn("后端不可用，走本地兜底", e);
-      }
-      // 兜底：用本地正则简单解析
-      const fallback = localFallbackParse(text);
-      tasks.push(...fallback);
+      } catch (e) { console.warn("后端不通，本地兜底", e); }
+      const fb = localFallbackParse(text);
+      tasks.push(...fb);
       saveTasks();
-      return fallback;
+      return fb;
     }
 
-    // 本地兜底解析（很粗糙，AI 没接通时保证能用）
     function localFallbackParse(text) {
-      const now = new Date();
       const result = { id: crypto.randomUUID(), title: text.trim(), original: text, date: null, time: null, created_at: new Date().toISOString(), done: false };
       const t = text;
-      // 日期识别
       if (/今天|今晚|今早|今儿|现在/.test(t)) result.date = todayStr();
       else if (/明天|明早|明晚|明儿/.test(t)) result.date = tomorrowStr();
       else if (/后天/.test(t)) {
         const d = new Date(); d.setDate(d.getDate()+2); result.date = ymd(d);
-      } else if (/大后天/.test(t)) {
-        const d = new Date(); d.setDate(d.getDate()+3); result.date = ymd(d);
       }
-      // 时间识别（"上午九点"、"下午三点半"、"15:00"）
       let m;
       if ((m = t.match(/(\d{1,2})[:：](\d{2})/))) {
         result.time = `${String(m[1]).padStart(2,"0")}:${m[2]}`;
@@ -353,16 +499,7 @@
         if (m[3] === "半") min = "30";
         else if (m[3]) min = String(parseInt(m[3])).padStart(2,"0");
         result.time = `${String(h).padStart(2,"0")}:${min}`;
-      } else if ((m = t.match(/(早上|晚上|中午|傍晚)\s*(\d{1,2})点(半|\d{1,2}分?)?/))) {
-        let h = parseInt(m[2]);
-        if ((m[1]==="晚上"||m[1]==="傍晚") && h < 12) h += 12;
-        if (m[1]==="中午" && h < 12) h += 12;
-        let min = "00";
-        if (m[3] === "半") min = "30";
-        else if (m[3]) min = String(parseInt(m[3])).padStart(2,"0");
-        result.time = `${String(h).padStart(2,"0")}:${min}`;
       }
-      // 没说日期但说了时间 → 默认今天
       if (!result.date && result.time) result.date = todayStr();
       return [result];
     }
@@ -391,7 +528,7 @@
         return;
       }
       el.innerHTML = list.map(task => `
-        <div class="task-item ${task.done ? "done" : ""}" data-id="${task.id}">
+        <div class="task-item" data-id="${task.id}">
           <div class="task-time ${task.time ? "" : "no-time"}">${task.time || "随时"}</div>
           <div class="task-content">${escapeHtml(task.title)}</div>
         </div>
@@ -402,7 +539,29 @@
         ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     }
 
-    // ============ 事件 ============
+    // ============ 明日折叠 ============
+    const tomorrowHeader = document.getElementById("tomorrowHeader");
+    const tomorrowList = document.getElementById("tomorrowList");
+    function setTomorrowOpen(open) {
+      if (open) {
+        tomorrowHeader.classList.add("expanded");
+        tomorrowList.classList.remove("collapsed");
+        tomorrowList.classList.add("expanded");
+      } else {
+        tomorrowHeader.classList.remove("expanded");
+        tomorrowList.classList.remove("expanded");
+        tomorrowList.classList.add("collapsed");
+      }
+      localStorage.setItem(TOMORROW_OPEN_KEY, open ? "1" : "0");
+    }
+    tomorrowHeader.addEventListener("click", () => {
+      const isOpen = tomorrowList.classList.contains("expanded");
+      setTomorrowOpen(!isOpen);
+    });
+    // 初始：默认收起，但记住用户选择
+    setTomorrowOpen(localStorage.getItem(TOMORROW_OPEN_KEY) === "1");
+
+    // ============ 提交 ============
     const memoEl = document.getElementById("memo");
     const saveBtn = document.getElementById("save");
     const toastEl = document.getElementById("toast");
@@ -415,7 +574,7 @@
       showToast._t = setTimeout(() => toastEl.classList.remove("show"), 1800);
     }
 
-    saveBtn.addEventListener("click", async () => {
+    async function submitMemo() {
       const text = memoEl.value.trim();
       if (!text) { memoEl.focus(); return; }
       saveBtn.disabled = true;
@@ -424,6 +583,7 @@
         const newTasks = await parseAndSave(text);
         memoEl.value = "";
         render();
+        scheduleLocalNotifications();
         if (newTasks.length === 1) {
           const t = newTasks[0];
           if (t.date === todayStr()) showToast("已记下，今天的事 ✓");
@@ -440,16 +600,215 @@
         saveBtn.disabled = false;
         saveBtn.textContent = "记下";
       }
+    }
+    saveBtn.addEventListener("click", submitMemo);
+
+    // ============ 按住说话 ============
+    const voiceBtn = document.getElementById("voice");
+    const voiceLabel = document.getElementById("voiceLabel");
+    const recordingHint = document.getElementById("recordingHint");
+    const recHintText = document.getElementById("recHintText");
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let recState = "idle";
+    let interimText = "";
+    let baseText = "";
+
+    function buildRecognition() {
+      if (!SR) return null;
+      const rec = new SR();
+      rec.lang = "zh-CN";
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (event) => {
+        let finalSeg = "", interimSeg = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          if (r.isFinal) finalSeg += r[0].transcript;
+          else interimSeg += r[0].transcript;
+        }
+        if (finalSeg) baseText = (baseText + finalSeg).replace(/\s+/g, "");
+        interimText = interimSeg.replace(/\s+/g, "");
+        memoEl.value = baseText + interimText;
+        recHintText.textContent = (baseText + interimText).slice(-30) || "在听了…";
+      };
+      rec.onerror = (e) => {
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+          showToast("没有麦克风权限，去设置允许一下", true);
+          stopRecording();
+        } else if (e.error !== "no-speech") {
+          showToast("识别出问题，再试一次", true);
+        }
+      };
+      rec.onend = () => {
+        if (recState === "recording") {
+          try { rec.start(); } catch {}
+        }
+      };
+      return rec;
+    }
+
+    function startRecording(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      if (!SR) { showToast("这台设备不支持语音", true); return; }
+      if (recState === "recording") return;
+      if (!recognition) recognition = buildRecognition();
+      if (!recognition) return;
+      recState = "recording";
+      baseText = memoEl.value.trim();
+      if (baseText && !/[，。、,.!?]$/.test(baseText)) baseText += "，";
+      interimText = "";
+      voiceBtn.classList.add("recording");
+      voiceLabel.textContent = "松开发送";
+      recordingHint.classList.add("show");
+      recHintText.textContent = "在听了…";
+      try { recognition.start(); } catch (err) { /* 已经在 start */ }
+    }
+    function stopRecording(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      if (recState !== "recording") return;
+      recState = "idle";
+      voiceBtn.classList.remove("recording");
+      voiceLabel.textContent = "按住说话";
+      recordingHint.classList.remove("show");
+      try { recognition && recognition.stop(); } catch {}
+      const final = (baseText + interimText).trim();
+      memoEl.value = final;
+      interimText = "";
+      setTimeout(() => { if (memoEl.value.trim()) submitMemo(); }, 300);
+    }
+    voiceBtn.addEventListener("touchstart", startRecording, { passive: false });
+    voiceBtn.addEventListener("touchend", stopRecording, { passive: false });
+    voiceBtn.addEventListener("touchcancel", stopRecording, { passive: false });
+    voiceBtn.addEventListener("mousedown", startRecording);
+    voiceBtn.addEventListener("mouseup", stopRecording);
+    voiceBtn.addEventListener("mouseleave", stopRecording);
+    voiceBtn.addEventListener("contextmenu", e => e.preventDefault());
+
+    // ============ 通知 ============
+    const notifBanner = document.getElementById("notifBanner");
+    document.getElementById("notifEnable").addEventListener("click", async () => {
+      notifBanner.classList.remove("show");
+      localStorage.setItem(NOTIF_DECISION_KEY, "asked");
+      if ("Notification" in window) {
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm === "granted") {
+            await subscribeForServerPush();
+            scheduleLocalNotifications();
+            showToast("提醒已开启 ✓");
+          }
+        } catch (e) { console.warn(e); }
+      }
+    });
+    document.getElementById("notifSkip").addEventListener("click", () => {
+      notifBanner.classList.remove("show");
+      localStorage.setItem(NOTIF_DECISION_KEY, "skipped");
     });
 
-    // 启动
+    function maybeShowNotifBanner() {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") return;
+      if (Notification.permission === "denied") return;
+      if (localStorage.getItem(NOTIF_DECISION_KEY)) return;
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+                       || window.navigator.standalone === true;
+      if (!isStandalone) return;
+      notifBanner.classList.add("show");
+    }
+
+    function scheduleLocalNotifications() {
+      scheduledNotifTimers.forEach(t => clearTimeout(t));
+      scheduledNotifTimers = [];
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const now = new Date();
+      const today = todayStr();
+      const due = tasks.filter(x => x.date === today && x.time);
+      for (const t of due) {
+        const [h, m] = t.time.split(":").map(Number);
+        const fireAt = new Date(); fireAt.setHours(h, m, 0, 0);
+        const delay = fireAt.getTime() - now.getTime();
+        if (delay <= 0) continue;
+        if (delay > 24 * 3600 * 1000) continue;
+        const timer = setTimeout(() => fireNotification(t.title, t.time), delay);
+        scheduledNotifTimers.push(timer);
+      }
+    }
+
+    async function fireNotification(title, time) {
+      try {
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification("该提醒了", {
+            body: `${time}　${title}`,
+            icon: "/icon-192.png",
+            badge: "/icon-192.png",
+            tag: `task-${time}-${title}`,
+            requireInteraction: true
+          });
+          return;
+        }
+      } catch (e) { console.warn(e); }
+      try { new Notification("该提醒了", { body: `${time}　${title}`, icon: "/icon-192.png" }); }
+      catch (e) { console.warn(e); }
+    }
+
+    // ============ 服务端推送订阅 ============
+    async function subscribeForServerPush() {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      try {
+        const keyResp = await fetch("/api/vapid-key");
+        if (!keyResp.ok) return;
+        const { publicKey } = await keyResp.json();
+        if (!publicKey) return;
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey)
+          });
+        }
+        await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sub.toJSON())
+        });
+      } catch (e) { console.warn("服务端推送订阅失败", e); }
+    }
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = atob(base64);
+      const out = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; ++i) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+
+    // ============ Service Worker ============
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then(() => {
+            // 已授权过的话，直接尝试订阅（保持订阅最新）
+            if (Notification.permission === "granted") subscribeForServerPush();
+          })
+          .catch(err => console.warn("SW 注册失败", err));
+      });
+    }
+
+    // ============ 启动 ============
     render();
     syncFromBackend();
-    // 每 60 秒重新渲染一次（跨过午夜时今日/明日自动切换）
+    scheduleLocalNotifications();
+    maybeShowNotifBanner();
     setInterval(render, 60000);
-    // 页面重新可见时再同步一次
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) syncFromBackend();
+      if (!document.hidden) {
+        syncFromBackend();
+        maybeShowNotifBanner();
+      }
     });
   </script>
 </body>

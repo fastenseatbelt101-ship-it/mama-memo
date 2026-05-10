@@ -2,15 +2,14 @@
 // 输入："明天上午十点去医院体检，下午三点开会"
 // 输出：{ tasks: [{ title, date, time }, ...] }
 
-export async function parseWithAI(rawText) {
-  const apiKey = process.env.KIMI_API_KEY;
+export async function parseWithAI(rawText, env) {
+  const apiKey = env.KIMI_API_KEY;
   if (!apiKey) {
     throw new Error("KIMI_API_KEY 未配置");
   }
 
-  // 给 AI 当前日期上下文，否则它不知道"明天"是几号
+  // 给 AI 当前日期上下文
   const now = new Date();
-  // 转成北京时间（妈妈在中国）
   const beijing = new Date(now.getTime() + 8 * 3600 * 1000);
   const y = beijing.getUTCFullYear();
   const m = String(beijing.getUTCMonth() + 1).padStart(2, "0");
@@ -75,7 +74,6 @@ export async function parseWithAI(rawText) {
     return { tasks: [] };
   }
 
-  // 清洗：保证每个任务字段格式正确
   const cleaned = parsed.tasks
     .filter(t => t && typeof t.title === "string" && t.title.trim())
     .map(t => ({
