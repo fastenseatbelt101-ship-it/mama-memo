@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="备忘录">
+  <meta name="theme-color" content="#FFF8F3">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>妈妈的备忘录</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #FFF8F3;
+      color: #2C2419;
+      font-size: 17px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body {
+      padding:
+        max(env(safe-area-inset-top), 16px)
+        max(env(safe-area-inset-right), 20px)
+        max(env(safe-area-inset-bottom), 24px)
+        max(env(safe-area-inset-left), 20px);
+      max-width: 600px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 8px 0 20px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .date-hint {
+      font-size: 14px;
+      color: #9B8B7A;
+    }
+
+    /* 输入区域 */
+    .input-card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 2px 16px rgba(80, 50, 20, 0.06);
+      margin-bottom: 28px;
+    }
+    textarea#memo {
+      width: 100%;
+      min-height: 120px;
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 19px;
+      line-height: 1.6;
+      color: #2C2419;
+      padding: 4px;
+    }
+    textarea#memo::placeholder {
+      color: #C9B8A1;
+    }
+    .input-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+    .voice-hint {
+      font-size: 13px;
+      color: #B5A28A;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    button#save {
+      background: #D97757;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 999px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.2s ease;
+      min-height: 44px;
+    }
+    button#save:active { transform: scale(0.96); background: #C4664A; }
+    button#save:disabled { background: #E8C4B5; cursor: not-allowed; }
+
+    /* 区块 */
+    section.list-section {
+      margin-bottom: 28px;
+    }
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 0 4px 12px;
+    }
+    .section-title h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+      color: #5C4733;
+    }
+    .section-title .count {
+      font-size: 13px;
+      color: #B5A28A;
+    }
+
+    /* 任务卡片 */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .task-item {
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 8px rgba(80, 50, 20, 0.04);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: opacity 0.2s ease;
+    }
+    .task-time {
+      flex-shrink: 0;
+      min-width: 56px;
+      font-size: 15px;
+      color: #D97757;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      padding-top: 1px;
+    }
+    .task-time.no-time {
+      color: #B5A28A;
+      font-weight: 500;
+    }
+    .task-content {
+      flex: 1;
+      font-size: 17px;
+      line-height: 1.45;
+      color: #2C2419;
+      word-break: break-word;
+    }
+    .task-original {
+      font-size: 13px;
+      color: #9B8B7A;
+      margin-top: 4px;
+    }
+    .task-item.done .task-content { text-decoration: line-through; color: #B5A28A; }
+    .task-item.done { opacity: 0.6; }
+
+    /* 空状态 */
+    .empty {
+      background: rgba(255, 255, 255, 0.5);
+      border: 1.5px dashed #E8D9C4;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+      font-size: 15px;
+      color: #B5A28A;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 80px;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(44, 36, 25, 0.92);
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-size: 15px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.error { background: rgba(180, 60, 40, 0.95); }
+
+    /* loading 旋转 */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>妈妈的备忘录</h1>
+    <span class="date-hint" id="todayLabel"></span>
+  </header>
+
+  <div class="input-card">
+    <textarea id="memo" placeholder="想到什么就写什么…&#10;比如：明天上午十点去医院、周五之前给王老师回电话"></textarea>
+    <div class="input-actions">
+      <span class="voice-hint">键盘上点🎤可以直接说话</span>
+      <button id="save">记下</button>
+    </div>
+  </div>
+
+  <section class="list-section">
+    <div class="section-title">
+      <h2>今日要做</h2>
+      <span class="count" id="todayCount"></span>
+    </div>
+    <div class="task-list" id="todayList"></div>
+  </section>
+
+  <section class="list-section">
+    <div class="section-title">
+      <h2>明日预告</h2>
+      <span class="count" id="tomorrowCount"></span>
+    </div>
+    <div class="task-list" id="tomorrowList"></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============ 状态管理 ============
+    const STORAGE_KEY = "mama_memo_tasks_v1";
+    let tasks = loadTasks();
+    let backendOK = false; // 后端可用时为 true，会在启动时探测
+
+    function loadTasks() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch { return []; }
+    }
+    function saveTasks() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    }
+
+    // 启动时从后端拉一次今日 + 明日的数据
+    async function syncFromBackend() {
+      try {
+        const resp = await fetch("/api/list");
+        if (!resp.ok) return;
+        const data = await resp.json();
+        backendOK = true;
+        const remote = [...(data.today || []), ...(data.tomorrow || [])];
+        // 把后端的数据合并进本地：以 id 去重，后端的覆盖本地的
+        const map = new Map();
+        for (const t of tasks) map.set(t.id, t);
+        for (const t of remote) map.set(t.id, t);
+        tasks = Array.from(map.values());
+        saveTasks();
+        render();
+      } catch (e) {
+        console.warn("拉取后端数据失败，仅显示本地缓存", e);
+      }
+    }
+
+    // ============ 日期工具 ============
+    function ymd(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    function todayStr() { return ymd(new Date()); }
+    function tomorrowStr() {
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      return ymd(d);
+    }
+    function formatTodayLabel() {
+      const d = new Date();
+      const wd = ["日","一","二","三","四","五","六"][d.getDay()];
+      return `${d.getMonth()+1}月${d.getDate()}日 周${wd}`;
+    }
+
+    // ============ 后端调用（带 LocalStorage 兜底） ============
+    async function parseAndSave(text) {
+      // 优先调后端 AI 解析
+      try {
+        const resp = await fetch("/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.tasks && Array.isArray(data.tasks)) {
+            // 后端已经存了，前端也存一份本地缓存
+            tasks.push(...data.tasks);
+            saveTasks();
+            return data.tasks;
+          }
+        }
+      } catch (e) {
+        console.warn("后端不可用，走本地兜底", e);
+      }
+      // 兜底：用本地正则简单解析
+      const fallback = localFallbackParse(text);
+      tasks.push(...fallback);
+      saveTasks();
+      return fallback;
+    }
+
+    // 本地兜底解析（很粗糙，AI 没接通时保证能用）
+    function localFallbackParse(text) {
+      const now = new Date();
+      const result = { id: crypto.randomUUID(), title: text.trim(), original: text, date: null, time: null, created_at: new Date().toISOString(), done: false };
+      const t = text;
+      // 日期识别
+      if (/今天|今晚|今早|今儿|现在/.test(t)) result.date = todayStr();
+      else if (/明天|明早|明晚|明儿/.test(t)) result.date = tomorrowStr();
+      else if (/后天/.test(t)) {
+        const d = new Date(); d.setDate(d.getDate()+2); result.date = ymd(d);
+      } else if (/大后天/.test(t)) {
+        const d = new Date(); d.setDate(d.getDate()+3); result.date = ymd(d);
+      }
+      // 时间识别（"上午九点"、"下午三点半"、"15:00"）
+      let m;
+      if ((m = t.match(/(\d{1,2})[:：](\d{2})/))) {
+        result.time = `${String(m[1]).padStart(2,"0")}:${m[2]}`;
+      } else if ((m = t.match(/([上下])午\s*(\d{1,2})点(半|\d{1,2}分?)?/))) {
+        let h = parseInt(m[2]);
+        if (m[1] === "下" && h < 12) h += 12;
+        if (m[1] === "上" && h === 12) h = 0;
+        let min = "00";
+        if (m[3] === "半") min = "30";
+        else if (m[3]) min = String(parseInt(m[3])).padStart(2,"0");
+        result.time = `${String(h).padStart(2,"0")}:${min}`;
+      } else if ((m = t.match(/(早上|晚上|中午|傍晚)\s*(\d{1,2})点(半|\d{1,2}分?)?/))) {
+        let h = parseInt(m[2]);
+        if ((m[1]==="晚上"||m[1]==="傍晚") && h < 12) h += 12;
+        if (m[1]==="中午" && h < 12) h += 12;
+        let min = "00";
+        if (m[3] === "半") min = "30";
+        else if (m[3]) min = String(parseInt(m[3])).padStart(2,"0");
+        result.time = `${String(h).padStart(2,"0")}:${min}`;
+      }
+      // 没说日期但说了时间 → 默认今天
+      if (!result.date && result.time) result.date = todayStr();
+      return [result];
+    }
+
+    // ============ 渲染 ============
+    function render() {
+      document.getElementById("todayLabel").textContent = formatTodayLabel();
+      const today = todayStr(), tomorrow = tomorrowStr();
+      const todayTasks = tasks.filter(x => x.date === today).sort(sortByTime);
+      const tomorrowTasks = tasks.filter(x => x.date === tomorrow).sort(sortByTime);
+      renderList("todayList", todayTasks, "今天还没有记什么 ✿");
+      renderList("tomorrowList", tomorrowTasks, "明天暂无安排");
+      document.getElementById("todayCount").textContent = todayTasks.length ? `${todayTasks.length}件` : "";
+      document.getElementById("tomorrowCount").textContent = tomorrowTasks.length ? `${tomorrowTasks.length}件` : "";
+    }
+    function sortByTime(a, b) {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    }
+    function renderList(elId, list, emptyText) {
+      const el = document.getElementById(elId);
+      if (!list.length) {
+        el.innerHTML = `<div class="empty">${emptyText}</div>`;
+        return;
+      }
+      el.innerHTML = list.map(task => `
+        <div class="task-item ${task.done ? "done" : ""}" data-id="${task.id}">
+          <div class="task-time ${task.time ? "" : "no-time"}">${task.time || "随时"}</div>
+          <div class="task-content">${escapeHtml(task.title)}</div>
+        </div>
+      `).join("");
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+
+    // ============ 事件 ============
+    const memoEl = document.getElementById("memo");
+    const saveBtn = document.getElementById("save");
+    const toastEl = document.getElementById("toast");
+
+    function showToast(msg, isError) {
+      toastEl.textContent = msg;
+      toastEl.classList.toggle("error", !!isError);
+      toastEl.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toastEl.classList.remove("show"), 1800);
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      const text = memoEl.value.trim();
+      if (!text) { memoEl.focus(); return; }
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<span class="spinner"></span>记下`;
+      try {
+        const newTasks = await parseAndSave(text);
+        memoEl.value = "";
+        render();
+        if (newTasks.length === 1) {
+          const t = newTasks[0];
+          if (t.date === todayStr()) showToast("已记下，今天的事 ✓");
+          else if (t.date === tomorrowStr()) showToast("已记下，明天的事 ✓");
+          else if (t.date) showToast(`已记下，${t.date} ✓`);
+          else showToast("已记下 ✓");
+        } else {
+          showToast(`已记下 ${newTasks.length} 件 ✓`);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast("出问题了，再试一次", true);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "记下";
+      }
+    });
+
+    // 启动
+    render();
+    syncFromBackend();
+    // 每 60 秒重新渲染一次（跨过午夜时今日/明日自动切换）
+    setInterval(render, 60000);
+    // 页面重新可见时再同步一次
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) syncFromBackend();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "mama-memo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "妈妈的备忘录：一个温柔的、能听懂时间的备忘录",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

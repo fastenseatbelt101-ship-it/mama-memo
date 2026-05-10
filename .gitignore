@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 环境变量（千万不要提交！里面有 API key）
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
