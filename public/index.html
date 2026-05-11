@@ -1,373 +1,292 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="备忘录">
-  <meta name="theme-color" content="#FFF8F3">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <title>妈妈的备忘录</title>
-  <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
-    textarea, input { -webkit-user-select: text; user-select: text; }
-    html, body {
-      margin: 0; padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
-      background: #FFF8F3;
-      color: #2C2419;
-      font-size: 17px;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-    body {
-      max-width: 600px;
-      margin: 0 auto;
-      min-height: 100vh;
-      padding-bottom: 0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="备忘录">
+<meta name="theme-color" content="#FFF8F3">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>妈妈的备忘录</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+textarea, input, .selectable { -webkit-user-select: text; user-select: text; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  background: #FFF8F3; color: #2C2419;
+  font-size: 17px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+body { max-width: 600px; margin: 0 auto; min-height: 100vh; }
 
-    /* 顶部内容区（可滚动）—— 给底部 input 预留空间 */
-    .scroll-area {
-      padding:
-        max(env(safe-area-inset-top), 16px)
-        max(env(safe-area-inset-right), 20px)
-        220px
-        max(env(safe-area-inset-left), 20px);
-    }
+/* ===== Header / Tabs ===== */
+header {
+  position: sticky; top: 0; z-index: 40;
+  background: #FFF8F3;
+  padding: max(env(safe-area-inset-top), 16px) max(env(safe-area-inset-right), 20px) 0 max(env(safe-area-inset-left), 20px);
+}
+.title-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0 12px; }
+h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+.date-hint { font-size: 13px; color: #9B8B7A; }
 
-    header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      padding: 8px 0 18px;
-    }
-    h1 {
-      margin: 0;
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
-    .date-hint {
-      font-size: 14px;
-      color: #9B8B7A;
-    }
+.tabs { display: flex; gap: 0; border-bottom: 1px solid #E8D9C4; padding: 0 4px; }
+.tab {
+  flex: 1; background: transparent; border: 0;
+  padding: 12px 0; font-size: 16px; font-family: inherit;
+  color: #9B8B7A; cursor: pointer; position: relative;
+  transition: color 0.2s ease;
+}
+.tab.active { color: #5C4733; font-weight: 600; }
+.tab.active::after {
+  content: ""; position: absolute; left: 25%; right: 25%; bottom: -1px; height: 2px;
+  background: #D97757; border-radius: 2px;
+}
+.tab-badge {
+  display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 4px;
+  background: #D97757; color: #fff; font-size: 11px; font-weight: 600;
+  border-radius: 999px; vertical-align: 2px;
+}
+.tab-badge:empty, .tab-badge.zero { display: none; }
 
-    /* 通知开关条 */
-    .notif-banner {
-      background: #FFF1E6;
-      border: 1px solid #F2DCC4;
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 18px;
-      display: none;
-      align-items: center;
-      gap: 10px;
-      font-size: 14px;
-      color: #6B4F33;
-    }
-    .notif-banner.show { display: flex; }
-    .notif-banner span { flex: 1; }
-    .notif-banner button {
-      background: #D97757; color: #fff; border: none;
-      padding: 6px 12px; border-radius: 999px;
-      font-size: 13px; font-weight: 500; font-family: inherit;
-    }
-    .notif-banner .skip {
-      background: transparent; color: #9B8B7A;
-      border: 1px solid #E8D9C4;
-    }
+/* ===== Scrollable content ===== */
+.scroll-area {
+  padding: 16px max(env(safe-area-inset-right), 20px) 220px max(env(safe-area-inset-left), 20px);
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* 区块 */
-    section.list-section { margin-bottom: 22px; }
-    .section-title {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      margin: 0 4px 12px;
-      cursor: default;
-    }
-    .section-title.collapsible {
-      cursor: pointer;
-      padding: 8px 4px;
-      margin: 0 0 4px;
-    }
-    .section-title h2 {
-      margin: 0;
-      font-size: 17px;
-      font-weight: 600;
-      color: #5C4733;
-    }
-    .section-title .right {
-      display: flex; align-items: center; gap: 6px;
-    }
-    .section-title .count {
-      font-size: 13px;
-      color: #B5A28A;
-    }
-    .section-title .chevron {
-      width: 18px; height: 18px;
-      color: #9B8B7A;
-      transition: transform 0.25s ease;
-    }
-    .section-title.collapsible.expanded .chevron {
-      transform: rotate(90deg);
-    }
+/* ===== 通用 ===== */
+section.list-section { margin-bottom: 22px; }
+.section-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 4px 12px; }
+.section-title.collapsible { cursor: pointer; padding: 8px 4px; margin: 0 0 4px; }
+.section-title h2 { margin: 0; font-size: 17px; font-weight: 600; color: #5C4733; }
+.section-title .right { display: flex; align-items: center; gap: 6px; }
+.section-title .count { font-size: 13px; color: #B5A28A; }
+.section-title .chevron { width: 18px; height: 18px; color: #9B8B7A; transition: transform 0.25s ease; }
+.section-title.collapsible.expanded .chevron { transform: rotate(90deg); }
 
-    .task-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-    .task-list.collapsed {
-      max-height: 0;
-      gap: 0;
-    }
-    .task-list.expanded {
-      max-height: 2000px;
-    }
-    .task-item {
-      background: #fff;
-      border-radius: 14px;
-      padding: 14px 16px;
-      box-shadow: 0 1px 8px rgba(80, 50, 20, 0.04);
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .task-time {
-      flex-shrink: 0;
-      min-width: 56px;
-      font-size: 15px;
-      color: #D97757;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      padding-top: 1px;
-    }
-    .task-time.no-time {
-      color: #B5A28A;
-      font-weight: 500;
-    }
-    .task-content {
-      flex: 1;
-      font-size: 17px;
-      line-height: 1.45;
-      color: #2C2419;
-      word-break: break-word;
-    }
+.task-list { display: flex; flex-direction: column; gap: 10px; overflow: hidden; transition: max-height 0.3s ease; }
+.task-list.collapsed { max-height: 0; gap: 0; }
+.task-list.expanded { max-height: 4000px; }
+.task-item {
+  background: #fff; border-radius: 14px; padding: 14px 16px;
+  box-shadow: 0 1px 8px rgba(80, 50, 20, 0.04);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.task-time { flex-shrink: 0; min-width: 56px; font-size: 15px; color: #D97757; font-weight: 600; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.task-time.no-time { color: #B5A28A; font-weight: 500; }
+.task-content { flex: 1; font-size: 17px; line-height: 1.45; word-break: break-word; }
 
-    .empty {
-      background: rgba(255, 255, 255, 0.5);
-      border: 1.5px dashed #E8D9C4;
-      border-radius: 14px;
-      padding: 18px;
-      text-align: center;
-      font-size: 15px;
-      color: #B5A28A;
-    }
+.empty {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1.5px dashed #E8D9C4; border-radius: 14px;
+  padding: 18px; text-align: center; font-size: 15px; color: #B5A28A;
+}
 
-    /* 底部输入卡片：sticky */
-    .input-dock {
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
-      background: linear-gradient(180deg, rgba(255, 248, 243, 0) 0%, #FFF8F3 25%, #FFF8F3 100%);
-      padding:
-        24px
-        max(env(safe-area-inset-right), 20px)
-        max(env(safe-area-inset-bottom), 16px)
-        max(env(safe-area-inset-left), 20px);
-      z-index: 50;
-      pointer-events: none;
-    }
-    .input-dock-inner {
-      max-width: 600px;
-      margin: 0 auto;
-      pointer-events: auto;
-    }
-    .input-card {
-      background: #fff;
-      border-radius: 18px;
-      padding: 14px;
-      box-shadow: 0 6px 24px rgba(80, 50, 20, 0.08);
-    }
-    textarea#memo {
-      width: 100%;
-      min-height: 56px;
-      max-height: 140px;
-      border: none;
-      outline: none;
-      resize: none;
-      background: transparent;
-      font-family: inherit;
-      font-size: 17px;
-      line-height: 1.5;
-      color: #2C2419;
-      padding: 4px;
-    }
-    textarea#memo::placeholder {
-      color: #C9B8A1;
-    }
+/* ===== 通知开关条 ===== */
+.notif-banner {
+  background: #FFF1E6; border: 1px solid #F2DCC4;
+  border-radius: 12px; padding: 12px 14px; margin: 0 0 16px;
+  display: none; align-items: center; gap: 10px; font-size: 14px; color: #6B4F33;
+}
+.notif-banner.show { display: flex; }
+.notif-banner span { flex: 1; }
+.notif-banner button { background: #D97757; color: #fff; border: 0; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; font-family: inherit; }
+.notif-banner .skip { background: transparent; color: #9B8B7A; border: 1px solid #E8D9C4; }
 
-    .input-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    button#voice {
-      flex: 1;
-      background: #5C4733;
-      color: #fff;
-      border: none;
-      padding: 14px 20px;
-      border-radius: 999px;
-      font-size: 17px;
-      font-weight: 600;
-      font-family: inherit;
-      min-height: 50px;
-      transition: background 0.2s ease, transform 0.05s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      touch-action: none;
-    }
-    button#voice:active,
-    button#voice.recording {
-      background: #C44545;
-      transform: scale(0.99);
-    }
-    button#voice.recording {
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    button#voice .mic {
-      width: 18px; height: 18px;
-      display: inline-block;
-      vertical-align: middle;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(196, 69, 69, 0.6); }
-      50%      { box-shadow: 0 0 0 12px rgba(196, 69, 69, 0); }
-    }
+/* ===== Tab 1: 聊天 ===== */
+.chat-list { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+.chat-empty { text-align: center; color: #B5A28A; font-size: 14px; padding: 40px 20px; }
+.chat-bubble {
+  max-width: 86%; padding: 10px 14px; border-radius: 16px; line-height: 1.5;
+  word-wrap: break-word; word-break: break-word;
+  -webkit-user-select: text; user-select: text;
+}
+.chat-bubble.me { background: #D97757; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.chat-bubble.ai { background: #fff; color: #2C2419; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 6px rgba(80, 50, 20, 0.04); }
+.chat-bubble .meta { font-size: 12px; opacity: 0.65; margin-top: 4px; }
+.chat-bubble .ref-list { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06); }
+.chat-bubble .ref-item {
+  font-size: 13px; padding: 6px 10px; border-radius: 8px;
+  background: #FFF8F3; margin-top: 4px; cursor: pointer; color: #5C4733;
+}
+.chat-bubble .ref-item:active { background: #F2DCC4; }
+.chat-bubble.thinking { color: #B5A28A; font-style: italic; }
 
-    button#save {
-      background: #D97757;
-      color: #fff;
-      border: none;
-      padding: 14px 22px;
-      border-radius: 999px;
-      font-size: 17px;
-      font-weight: 600;
-      font-family: inherit;
-      min-height: 50px;
-    }
-    button#save:active { background: #C4664A; transform: scale(0.96); }
-    button#save:disabled { background: #E8C4B5; }
+/* ===== Tab 3: 心事时间轴 ===== */
+.filter-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0 12px; overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-tag {
+  flex-shrink: 0; padding: 6px 12px; border-radius: 999px;
+  background: #fff; color: #5C4733; font-size: 13px;
+  border: 1px solid #E8D9C4; font-family: inherit; cursor: pointer;
+}
+.filter-tag.active { background: #D97757; color: #fff; border-color: #D97757; }
+.export-btn {
+  flex-shrink: 0; margin-left: auto; padding: 6px 12px; border-radius: 999px;
+  background: transparent; color: #5C4733; font-size: 13px; font-family: inherit;
+  border: 1px solid #5C4733; cursor: pointer;
+}
 
-    /* Toast */
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 240px;
-      transform: translateX(-50%) translateY(20px);
-      background: rgba(44, 36, 25, 0.92);
-      color: #fff;
-      padding: 12px 22px;
-      border-radius: 999px;
-      font-size: 15px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease, transform 0.25s ease;
-      z-index: 1000;
-      backdrop-filter: blur(8px);
-    }
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-    .toast.error { background: rgba(180, 60, 40, 0.95); }
+.note-item {
+  background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+  box-shadow: 0 1px 8px rgba(80, 50, 20, 0.04);
+}
+.note-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9B8B7A; margin-bottom: 8px; }
+.note-meta .type-badge { padding: 2px 8px; border-radius: 999px; background: #FFF1E6; color: #6B4F33; font-weight: 500; }
+.note-meta .date { margin-left: auto; }
+.note-summary { font-size: 16px; font-weight: 500; color: #2C2419; margin-bottom: 6px; line-height: 1.4; }
+.note-content {
+  font-size: 14px; color: #5C4733; line-height: 1.55; white-space: pre-wrap;
+  -webkit-user-select: text; user-select: text;
+  max-height: 4.5em; overflow: hidden; position: relative;
+}
+.note-item.expanded .note-content { max-height: none; }
+.note-content::after {
+  content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 1.5em;
+  background: linear-gradient(180deg, transparent, #fff);
+  pointer-events: none;
+}
+.note-item.expanded .note-content::after { display: none; }
+.note-content.short::after { display: none; }
+.note-tags { margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+.note-tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #FFF1E6; color: #6B4F33; }
 
-    /* 录音中浮层 */
-    .recording-hint {
-      position: fixed;
-      left: 0; right: 0; bottom: 240px;
-      text-align: center;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      z-index: 999;
-    }
-    .recording-hint.show { opacity: 1; }
-    .recording-hint .dot {
-      display: inline-block;
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: #C44545;
-      animation: blink 1s ease-in-out infinite;
-      vertical-align: middle;
-      margin-right: 8px;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-    .recording-hint .label {
-      display: inline-block;
-      vertical-align: middle;
-      font-size: 17px;
-      color: #5C4733;
-      background: rgba(255, 255, 255, 0.96);
-      padding: 10px 18px;
-      border-radius: 999px;
-      box-shadow: 0 4px 16px rgba(80, 50, 20, 0.15);
-      max-width: 80%;
-    }
+.load-more {
+  display: block; margin: 16px auto; padding: 10px 24px;
+  background: #fff; color: #5C4733; border: 1px solid #E8D9C4;
+  border-radius: 999px; font-size: 14px; font-family: inherit; cursor: pointer;
+}
 
-    /* loading 旋转 */
-    .spinner {
-      width: 16px; height: 16px;
-      border: 2.5px solid rgba(255,255,255,0.4);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: inline-block;
-      vertical-align: middle;
-      margin-right: 6px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+/* ===== 底部输入 dock ===== */
+.input-dock {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(255, 248, 243, 0) 0%, #FFF8F3 25%, #FFF8F3 100%);
+  padding: 24px max(env(safe-area-inset-right), 20px) max(env(safe-area-inset-bottom), 16px) max(env(safe-area-inset-left), 20px);
+  z-index: 50; pointer-events: none;
+}
+.input-dock-inner { max-width: 600px; margin: 0 auto; pointer-events: auto; }
+.input-card {
+  background: #fff; border-radius: 18px; padding: 14px;
+  box-shadow: 0 6px 24px rgba(80, 50, 20, 0.08);
+}
+textarea#memo {
+  width: 100%; min-height: 56px; max-height: 140px; border: 0; outline: 0; resize: none;
+  background: transparent; font-family: inherit; font-size: 17px; line-height: 1.5;
+  color: #2C2419; padding: 4px;
+}
+textarea#memo::placeholder { color: #C9B8A1; }
+.mode-toggle {
+  display: inline-flex; gap: 4px; background: #FFF1E6;
+  border-radius: 999px; padding: 3px; margin-bottom: 6px;
+}
+.mode-toggle button {
+  border: 0; padding: 5px 12px; border-radius: 999px;
+  font-size: 13px; font-family: inherit; background: transparent; color: #6B4F33;
+}
+.mode-toggle button.active { background: #fff; color: #2C2419; font-weight: 600; }
+.input-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+button#voice {
+  flex: 1; background: #5C4733; color: #fff; border: 0;
+  padding: 14px 20px; border-radius: 999px; font-size: 17px; font-weight: 600;
+  font-family: inherit; min-height: 50px; transition: background 0.2s ease, transform 0.05s ease;
+  display: flex; align-items: center; justify-content: center; gap: 8px; touch-action: none;
+}
+button#voice:active, button#voice.recording { background: #C44545; transform: scale(0.99); }
+button#voice.recording { animation: pulse 1.2s ease-in-out infinite; }
+button#voice .mic { width: 18px; height: 18px; display: inline-block; vertical-align: middle; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 69, 69, 0.6); }
+  50%      { box-shadow: 0 0 0 12px rgba(196, 69, 69, 0); }
+}
+button#submit {
+  background: #D97757; color: #fff; border: 0;
+  padding: 14px 22px; border-radius: 999px; font-size: 17px; font-weight: 600;
+  font-family: inherit; min-height: 50px;
+}
+button#submit.ask-mode { background: #4A8A8C; }
+button#submit:active { transform: scale(0.96); }
+button#submit:disabled { background: #E8C4B5; }
+
+/* ===== Toast / 录音浮层 ===== */
+.toast {
+  position: fixed; left: 50%; bottom: 240px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(44, 36, 25, 0.92); color: #fff;
+  padding: 12px 22px; border-radius: 999px; font-size: 15px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 1000; backdrop-filter: blur(8px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: rgba(180, 60, 40, 0.95); }
+
+.recording-hint {
+  position: fixed; left: 0; right: 0; bottom: 240px;
+  text-align: center; pointer-events: none; opacity: 0;
+  transition: opacity 0.2s ease; z-index: 999;
+}
+.recording-hint.show { opacity: 1; }
+.recording-hint .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #C44545; animation: blink 1s ease-in-out infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.recording-hint .label {
+  display: inline-block; vertical-align: middle; font-size: 17px; color: #5C4733;
+  background: rgba(255, 255, 255, 0.96); padding: 10px 18px; border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(80, 50, 20, 0.15); max-width: 80%;
+}
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 2.5px solid rgba(255,255,255,0.4);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block; vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
-  <div class="scroll-area">
-    <header>
-      <h1>妈妈的备忘录</h1>
-      <span class="date-hint" id="todayLabel"></span>
-    </header>
+<header>
+  <div class="title-row">
+    <h1>妈妈的备忘录</h1>
+    <span class="date-hint" id="todayLabel"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="chat">交互</button>
+    <button class="tab" data-tab="tasks">待办<span class="tab-badge" id="badgeTasks"></span></button>
+    <button class="tab" data-tab="notes">心事<span class="tab-badge" id="badgeNotes"></span></button>
+  </div>
+</header>
 
-    <!-- 通知开关条（仅 PWA 模式下、未授权时显示）-->
-    <div class="notif-banner" id="notifBanner">
-      <span>到时间帮你弹个提醒？</span>
-      <button id="notifEnable">好的</button>
-      <button class="skip" id="notifSkip">以后再说</button>
-    </div>
+<div class="scroll-area">
+  <div class="notif-banner" id="notifBanner">
+    <span>到时间帮你弹个提醒？</span>
+    <button id="notifEnable">好的</button>
+    <button class="skip" id="notifSkip">以后再说</button>
+  </div>
 
-    <!-- 今日要做（永远展开）-->
+  <!-- Tab 1: 聊天 -->
+  <div class="tab-pane active" id="pane-chat">
+    <div class="chat-list" id="chatList"></div>
+  </div>
+
+  <!-- Tab 2: 待办 -->
+  <div class="tab-pane" id="pane-tasks">
     <section class="list-section">
       <div class="section-title">
         <h2>今日要做</h2>
-        <div class="right">
-          <span class="count" id="todayCount"></span>
-        </div>
+        <div class="right"><span class="count" id="todayCount"></span></div>
       </div>
       <div class="task-list expanded" id="todayList"></div>
     </section>
-
-    <!-- 明日预告（默认收起，可点击展开）-->
     <section class="list-section">
       <div class="section-title collapsible" id="tomorrowHeader">
         <h2>明日预告</h2>
@@ -382,434 +301,43 @@
     </section>
   </div>
 
-  <!-- 输入区，sticky 在底部 -->
-  <div class="input-dock">
-    <div class="input-dock-inner">
-      <div class="input-card">
-        <textarea id="memo" placeholder="按住下面棕色按钮直接说话，或者打字"></textarea>
-        <div class="input-actions">
-          <button id="voice">
-            <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="2" width="6" height="12" rx="3"/>
-              <path d="M5 11a7 7 0 0 0 14 0"/>
-              <line x1="12" y1="18" x2="12" y2="22"/>
-            </svg>
-            <span id="voiceLabel">按住说话</span>
-          </button>
-          <button id="save">记下</button>
-        </div>
+  <!-- Tab 3: 心事 -->
+  <div class="tab-pane" id="pane-notes">
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-tag active" data-tag="">全部</button>
+      <button class="export-btn" id="exportBtn">导出</button>
+    </div>
+    <div id="notesList"></div>
+    <button class="load-more" id="loadMoreBtn" style="display:none">加载更多</button>
+  </div>
+</div>
+
+<div class="input-dock">
+  <div class="input-dock-inner">
+    <div class="input-card">
+      <div class="mode-toggle">
+        <button id="modeRecord" class="active">📝 记一下</button>
+        <button id="modeAsk">🔍 问 AI</button>
+      </div>
+      <textarea id="memo" placeholder="按住下面棕色按钮直接说话，或者打字"></textarea>
+      <div class="input-actions">
+        <button id="voice">
+          <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
+          </svg>
+          <span id="voiceLabel">按住说话</span>
+        </button>
+        <button id="submit">记下</button>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="toast" id="toast"></div>
-  <div class="recording-hint" id="recordingHint">
-    <span class="label"><span class="dot"></span><span id="recHintText">在听了…</span></span>
-  </div>
+<div class="toast" id="toast"></div>
+<div class="recording-hint" id="recordingHint">
+  <span class="label"><span class="dot"></span><span id="recHintText">在听了…</span></span>
+</div>
 
-  <script>
-    // ============ 状态 ============
-    const STORAGE_KEY = "mama_memo_tasks_v1";
-    const NOTIF_DECISION_KEY = "mama_memo_notif_decided";
-    const TOMORROW_OPEN_KEY = "mama_memo_tomorrow_open";
-    let tasks = loadTasks();
-    let scheduledNotifTimers = [];
-
-    function loadTasks() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
-      catch { return []; }
-    }
-    function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
-
-    // ============ 日期工具 ============
-    function ymd(d) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-    function todayStr() { return ymd(new Date()); }
-    function tomorrowStr() {
-      const d = new Date(); d.setDate(d.getDate() + 1);
-      return ymd(d);
-    }
-    function formatTodayLabel() {
-      const d = new Date();
-      const wd = ["日","一","二","三","四","五","六"][d.getDay()];
-      return `${d.getMonth()+1}月${d.getDate()}日 周${wd}`;
-    }
-
-    // ============ 后端 ============
-    async function syncFromBackend() {
-      try {
-        const resp = await fetch("/api/list");
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const remote = [...(data.today || []), ...(data.tomorrow || [])];
-        const map = new Map();
-        for (const t of tasks) map.set(t.id, t);
-        for (const t of remote) map.set(t.id, t);
-        tasks = Array.from(map.values());
-        saveTasks();
-        render();
-        scheduleLocalNotifications();
-      } catch (e) {
-        console.warn("拉取失败", e);
-      }
-    }
-
-    async function parseAndSave(text) {
-      try {
-        const resp = await fetch("/api/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.tasks && Array.isArray(data.tasks)) {
-            tasks.push(...data.tasks);
-            saveTasks();
-            return data.tasks;
-          }
-        }
-      } catch (e) { console.warn("后端不通，本地兜底", e); }
-      const fb = localFallbackParse(text);
-      tasks.push(...fb);
-      saveTasks();
-      return fb;
-    }
-
-    function localFallbackParse(text) {
-      const result = { id: crypto.randomUUID(), title: text.trim(), original: text, date: null, time: null, created_at: new Date().toISOString(), done: false };
-      const t = text;
-      if (/今天|今晚|今早|今儿|现在/.test(t)) result.date = todayStr();
-      else if (/明天|明早|明晚|明儿/.test(t)) result.date = tomorrowStr();
-      else if (/后天/.test(t)) {
-        const d = new Date(); d.setDate(d.getDate()+2); result.date = ymd(d);
-      }
-      let m;
-      if ((m = t.match(/(\d{1,2})[:：](\d{2})/))) {
-        result.time = `${String(m[1]).padStart(2,"0")}:${m[2]}`;
-      } else if ((m = t.match(/([上下])午\s*(\d{1,2})点(半|\d{1,2}分?)?/))) {
-        let h = parseInt(m[2]);
-        if (m[1] === "下" && h < 12) h += 12;
-        if (m[1] === "上" && h === 12) h = 0;
-        let min = "00";
-        if (m[3] === "半") min = "30";
-        else if (m[3]) min = String(parseInt(m[3])).padStart(2,"0");
-        result.time = `${String(h).padStart(2,"0")}:${min}`;
-      }
-      if (!result.date && result.time) result.date = todayStr();
-      return [result];
-    }
-
-    // ============ 渲染 ============
-    function render() {
-      document.getElementById("todayLabel").textContent = formatTodayLabel();
-      const today = todayStr(), tomorrow = tomorrowStr();
-      const todayTasks = tasks.filter(x => x.date === today).sort(sortByTime);
-      const tomorrowTasks = tasks.filter(x => x.date === tomorrow).sort(sortByTime);
-      renderList("todayList", todayTasks, "今天还没有记什么 ✿");
-      renderList("tomorrowList", tomorrowTasks, "明天暂无安排");
-      document.getElementById("todayCount").textContent = todayTasks.length ? `${todayTasks.length}件` : "";
-      document.getElementById("tomorrowCount").textContent = tomorrowTasks.length ? `${tomorrowTasks.length}件` : "";
-    }
-    function sortByTime(a, b) {
-      if (!a.time && !b.time) return 0;
-      if (!a.time) return 1;
-      if (!b.time) return -1;
-      return a.time.localeCompare(b.time);
-    }
-    function renderList(elId, list, emptyText) {
-      const el = document.getElementById(elId);
-      if (!list.length) {
-        el.innerHTML = `<div class="empty">${emptyText}</div>`;
-        return;
-      }
-      el.innerHTML = list.map(task => `
-        <div class="task-item" data-id="${task.id}">
-          <div class="task-time ${task.time ? "" : "no-time"}">${task.time || "随时"}</div>
-          <div class="task-content">${escapeHtml(task.title)}</div>
-        </div>
-      `).join("");
-    }
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c =>
-        ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-    }
-
-    // ============ 明日折叠 ============
-    const tomorrowHeader = document.getElementById("tomorrowHeader");
-    const tomorrowList = document.getElementById("tomorrowList");
-    function setTomorrowOpen(open) {
-      if (open) {
-        tomorrowHeader.classList.add("expanded");
-        tomorrowList.classList.remove("collapsed");
-        tomorrowList.classList.add("expanded");
-      } else {
-        tomorrowHeader.classList.remove("expanded");
-        tomorrowList.classList.remove("expanded");
-        tomorrowList.classList.add("collapsed");
-      }
-      localStorage.setItem(TOMORROW_OPEN_KEY, open ? "1" : "0");
-    }
-    tomorrowHeader.addEventListener("click", () => {
-      const isOpen = tomorrowList.classList.contains("expanded");
-      setTomorrowOpen(!isOpen);
-    });
-    // 初始：默认收起，但记住用户选择
-    setTomorrowOpen(localStorage.getItem(TOMORROW_OPEN_KEY) === "1");
-
-    // ============ 提交 ============
-    const memoEl = document.getElementById("memo");
-    const saveBtn = document.getElementById("save");
-    const toastEl = document.getElementById("toast");
-
-    function showToast(msg, isError) {
-      toastEl.textContent = msg;
-      toastEl.classList.toggle("error", !!isError);
-      toastEl.classList.add("show");
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(() => toastEl.classList.remove("show"), 1800);
-    }
-
-    async function submitMemo() {
-      const text = memoEl.value.trim();
-      if (!text) { memoEl.focus(); return; }
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = `<span class="spinner"></span>记下`;
-      try {
-        const newTasks = await parseAndSave(text);
-        memoEl.value = "";
-        render();
-        scheduleLocalNotifications();
-        if (newTasks.length === 1) {
-          const t = newTasks[0];
-          if (t.date === todayStr()) showToast("已记下，今天的事 ✓");
-          else if (t.date === tomorrowStr()) showToast("已记下，明天的事 ✓");
-          else if (t.date) showToast(`已记下，${t.date} ✓`);
-          else showToast("已记下 ✓");
-        } else {
-          showToast(`已记下 ${newTasks.length} 件 ✓`);
-        }
-      } catch (e) {
-        console.error(e);
-        showToast("出问题了，再试一次", true);
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = "记下";
-      }
-    }
-    saveBtn.addEventListener("click", submitMemo);
-
-    // ============ 按住说话 ============
-    const voiceBtn = document.getElementById("voice");
-    const voiceLabel = document.getElementById("voiceLabel");
-    const recordingHint = document.getElementById("recordingHint");
-    const recHintText = document.getElementById("recHintText");
-
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
-    let recState = "idle";
-    let interimText = "";
-    let baseText = "";
-
-    function buildRecognition() {
-      if (!SR) return null;
-      const rec = new SR();
-      rec.lang = "zh-CN";
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.onresult = (event) => {
-        let finalSeg = "", interimSeg = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const r = event.results[i];
-          if (r.isFinal) finalSeg += r[0].transcript;
-          else interimSeg += r[0].transcript;
-        }
-        if (finalSeg) baseText = (baseText + finalSeg).replace(/\s+/g, "");
-        interimText = interimSeg.replace(/\s+/g, "");
-        memoEl.value = baseText + interimText;
-        recHintText.textContent = (baseText + interimText).slice(-30) || "在听了…";
-      };
-      rec.onerror = (e) => {
-        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-          showToast("没有麦克风权限，去设置允许一下", true);
-          stopRecording();
-        } else if (e.error !== "no-speech") {
-          showToast("识别出问题，再试一次", true);
-        }
-      };
-      rec.onend = () => {
-        if (recState === "recording") {
-          try { rec.start(); } catch {}
-        }
-      };
-      return rec;
-    }
-
-    function startRecording(e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      if (!SR) { showToast("这台设备不支持语音", true); return; }
-      if (recState === "recording") return;
-      if (!recognition) recognition = buildRecognition();
-      if (!recognition) return;
-      recState = "recording";
-      baseText = memoEl.value.trim();
-      if (baseText && !/[，。、,.!?]$/.test(baseText)) baseText += "，";
-      interimText = "";
-      voiceBtn.classList.add("recording");
-      voiceLabel.textContent = "松开发送";
-      recordingHint.classList.add("show");
-      recHintText.textContent = "在听了…";
-      try { recognition.start(); } catch (err) { /* 已经在 start */ }
-    }
-    function stopRecording(e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      if (recState !== "recording") return;
-      recState = "idle";
-      voiceBtn.classList.remove("recording");
-      voiceLabel.textContent = "按住说话";
-      recordingHint.classList.remove("show");
-      try { recognition && recognition.stop(); } catch {}
-      const final = (baseText + interimText).trim();
-      memoEl.value = final;
-      interimText = "";
-      setTimeout(() => { if (memoEl.value.trim()) submitMemo(); }, 300);
-    }
-    voiceBtn.addEventListener("touchstart", startRecording, { passive: false });
-    voiceBtn.addEventListener("touchend", stopRecording, { passive: false });
-    voiceBtn.addEventListener("touchcancel", stopRecording, { passive: false });
-    voiceBtn.addEventListener("mousedown", startRecording);
-    voiceBtn.addEventListener("mouseup", stopRecording);
-    voiceBtn.addEventListener("mouseleave", stopRecording);
-    voiceBtn.addEventListener("contextmenu", e => e.preventDefault());
-
-    // ============ 通知 ============
-    const notifBanner = document.getElementById("notifBanner");
-    document.getElementById("notifEnable").addEventListener("click", async () => {
-      notifBanner.classList.remove("show");
-      localStorage.setItem(NOTIF_DECISION_KEY, "asked");
-      if ("Notification" in window) {
-        try {
-          const perm = await Notification.requestPermission();
-          if (perm === "granted") {
-            await subscribeForServerPush();
-            scheduleLocalNotifications();
-            showToast("提醒已开启 ✓");
-          }
-        } catch (e) { console.warn(e); }
-      }
-    });
-    document.getElementById("notifSkip").addEventListener("click", () => {
-      notifBanner.classList.remove("show");
-      localStorage.setItem(NOTIF_DECISION_KEY, "skipped");
-    });
-
-    function maybeShowNotifBanner() {
-      if (!("Notification" in window)) return;
-      if (Notification.permission === "granted") return;
-      if (Notification.permission === "denied") return;
-      if (localStorage.getItem(NOTIF_DECISION_KEY)) return;
-      const isStandalone = window.matchMedia("(display-mode: standalone)").matches
-                       || window.navigator.standalone === true;
-      if (!isStandalone) return;
-      notifBanner.classList.add("show");
-    }
-
-    function scheduleLocalNotifications() {
-      scheduledNotifTimers.forEach(t => clearTimeout(t));
-      scheduledNotifTimers = [];
-      if (!("Notification" in window) || Notification.permission !== "granted") return;
-      const now = new Date();
-      const today = todayStr();
-      const due = tasks.filter(x => x.date === today && x.time);
-      for (const t of due) {
-        const [h, m] = t.time.split(":").map(Number);
-        const fireAt = new Date(); fireAt.setHours(h, m, 0, 0);
-        const delay = fireAt.getTime() - now.getTime();
-        if (delay <= 0) continue;
-        if (delay > 24 * 3600 * 1000) continue;
-        const timer = setTimeout(() => fireNotification(t.title, t.time), delay);
-        scheduledNotifTimers.push(timer);
-      }
-    }
-
-    async function fireNotification(title, time) {
-      try {
-        if ("serviceWorker" in navigator) {
-          const reg = await navigator.serviceWorker.ready;
-          await reg.showNotification("该提醒了", {
-            body: `${time}　${title}`,
-            icon: "/icon-192.png",
-            badge: "/icon-192.png",
-            tag: `task-${time}-${title}`,
-            requireInteraction: true
-          });
-          return;
-        }
-      } catch (e) { console.warn(e); }
-      try { new Notification("该提醒了", { body: `${time}　${title}`, icon: "/icon-192.png" }); }
-      catch (e) { console.warn(e); }
-    }
-
-    // ============ 服务端推送订阅 ============
-    async function subscribeForServerPush() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-      try {
-        const keyResp = await fetch("/api/vapid-key");
-        if (!keyResp.ok) return;
-        const { publicKey } = await keyResp.json();
-        if (!publicKey) return;
-        const reg = await navigator.serviceWorker.ready;
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-          });
-        }
-        await fetch("/api/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sub.toJSON())
-        });
-      } catch (e) { console.warn("服务端推送订阅失败", e); }
-    }
-    function urlBase64ToUint8Array(base64String) {
-      const padding = "=".repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-      const raw = atob(base64);
-      const out = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; ++i) out[i] = raw.charCodeAt(i);
-      return out;
-    }
-
-    // ============ Service Worker ============
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js")
-          .then(() => {
-            // 已授权过的话，直接尝试订阅（保持订阅最新）
-            if (Notification.permission === "granted") subscribeForServerPush();
-          })
-          .catch(err => console.warn("SW 注册失败", err));
-      });
-    }
-
-    // ============ 启动 ============
-    render();
-    syncFromBackend();
-    scheduleLocalNotifications();
-    maybeShowNotifBanner();
-    setInterval(render, 60000);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) {
-        syncFromBackend();
-        maybeShowNotifBanner();
-      }
-    });
-  </script>
+<script src="/app.js" type="module"></script>
 </body>
 </html>

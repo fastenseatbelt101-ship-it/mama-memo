@@ -103,7 +103,7 @@ notepad .env.local
 把 `.env.local` 里三个值都填上：
 
 ```
-KIMI_API_KEY=sk-你的Kimi-key
+DEEPSEEK_API_KEY=sk-你的Kimi-key
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbG...一长串
 ```
@@ -144,7 +144,7 @@ git push -u origin main
 1. Vercel 首页 → "Add New..." → "Project"
 2. 选刚才那个 GitHub 仓库 `mama-memo` → Import
 3. **Configure Project** 页面，展开 "Environment Variables"，加三个：
-   - `KIMI_API_KEY` = `sk-...`
+   - `DEEPSEEK_API_KEY` = `sk-...`
    - `SUPABASE_URL` = `https://xxx.supabase.co`
    - `SUPABASE_SERVICE_KEY` = `eyJ...`
 4. 点 **Deploy**
